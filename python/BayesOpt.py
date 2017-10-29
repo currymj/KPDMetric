@@ -13,6 +13,7 @@ PAIRS_0 = 250
 ALTS_0 = 10
 E_P = 10
 E_A = 1
+CPLEX_PATH=os.environ['CPLEX_PATH']
 
 jargs = []
 
@@ -35,7 +36,7 @@ def f(Xl):
         for i in range(TRAJECTORIES):
             I = [
                 "java",
-                "-Djava.library.path=/Users/curry/Applications/IBM/ILOG/CPLEX_Studio1271/cplex/bin/x86-64_osx",
+                "-Djava.library.path=" + CPLEX_PATH,
                 "-Xmx8g", "-jar", "Simulation1.jar"
             ]
             I.append(str(arg[0]))
