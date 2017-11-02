@@ -1,4 +1,5 @@
-from __future__ import absolute_import, division, print_function, unicode_literals
+from __future__ import absolute_import, division, print_function, \
+                        unicode_literals
 import os
 import pickle
 import subprocess
@@ -13,7 +14,9 @@ PAIRS_0 = 250
 ALTS_0 = 10
 E_P = 10
 E_A = 1
-CPLEX_PATH=os.environ.get('CPLEX_PATH', '/Users/curry/Applications/IBM/ILOG/CPLEX_Studio1271/cplex/bin/x86-64_osx')
+CPLEX_PATH = os.environ.get(
+    'CPLEX_PATH',
+    '/Users/curry/Applications/IBM/ILOG/CPLEX_Studio1271/cplex/bin/x86-64_osx')
 output_dir = os.environ.get('RUN_OUTPUT', '.')
 
 
@@ -34,22 +37,22 @@ def f(Xl):
     for XI in range(len(Xl)):
         arg = Xl[XI]
         X = np.append(X, [arg], axis=0)
-        MT = 0 
+        MT = 0
         for i in range(TRAJECTORIES):
-            I = [
+            java_call = [
                 "java",
                 "-Djava.library.path=" + CPLEX_PATH,
                 "-Xmx8g", "-jar", "Simulation1.jar"
             ]
-            I.append(str(arg[0]))
+            java_call.append(str(arg[0]))
             for j in jargs:
-                I.append(str(j))
-            I.append(str(PAIRS_0))
-            I.append(str(ALTS_0))
-            I.append(str(E_P))
-            I.append(str(E_A))
+                java_call.append(str(j))
+            java_call.append(str(PAIRS_0))
+            java_call.append(str(ALTS_0))
+            java_call.append(str(E_P))
+            java_call.append(str(E_A))
             print("Running the simulator")
-            out = subprocess.check_output(I).decode()
+            out = subprocess.check_output(java_call).decode()
             out = out.split(" ")
             print("Finished")
             MT += float(out[13])
