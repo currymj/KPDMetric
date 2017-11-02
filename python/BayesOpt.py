@@ -13,7 +13,9 @@ PAIRS_0 = 250
 ALTS_0 = 10
 E_P = 10
 E_A = 1
-CPLEX_PATH=os.environ['CPLEX_PATH']
+CPLEX_PATH=os.environ.get('CPLEX_PATH', '/Users/curry/Applications/IBM/ILOG/CPLEX_Studio1271/cplex/bin/x86-64_osx')
+output_dir = os.environ.get('RUN_OUTPUT', '.')
+
 
 jargs = []
 
@@ -53,8 +55,8 @@ def f(Xl):
             MT += float(out[13])
         MT /= TRAJECTORIES
         Y = np.append(Y, [[MT]], axis=0)
-        ci = open("X" + l2f(jargs), "wb")
-        co = open("Y" + l2f(jargs), "wb")
+        ci = open(output_dir + "X" + l2f(jargs), "wb")
+        co = open(output_dir + "Y" + l2f(jargs), "wb")
         pickle.dump(X, ci)
         pickle.dump(Y, co)
         ci.close()
@@ -88,6 +90,6 @@ for BTP in range(4):
         myBopt.run_optimization(
             max_iter=maxi,
             eps=0,
-            evaluations_file="E" + l2f(jargs) + ".txt",
-            models_file="M" + l2f(jargs) + ".txt")
-        myBopt.plot_acquisition("Plot" + l2f(jargs) + ".png")
+            evaluations_file=output_dir + "E" + l2f(jargs) + ".txt",
+            models_file=output_dir + "M" + l2f(jargs) + ".txt")
+        myBopt.plot_acquisition(output_dir + "Plot" + l2f(jargs) + ".png")
