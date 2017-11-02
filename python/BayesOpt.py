@@ -46,12 +46,10 @@ def f(Xl):
             I.append(str(ALTS_0))
             I.append(str(E_P))
             I.append(str(E_A))
-            print(" ".join(I))
             print("Running the simulator")
             out = subprocess.check_output(I).decode()
             out = out.split(" ")
             print("Finished")
-            print(out)
             MT += float(out[13])
         MT /= TRAJECTORIES
         Y = np.append(Y, [[MT]], axis=0)
@@ -77,13 +75,13 @@ for BTP in range(4):
         Y = np.empty([0, 1])
         jargs = [BTP, BTD, 0, 0]
         if jargs == [1, 3, 0, 0]:
-            TRAJECTORIES = 1
+            TRAJECTORIES = 64
         if jargs == [2, 1, 0, 0]:
-            TRAJECTORIES = 1
+            TRAJECTORIES = 128
         elif jargs == [3, 3, 0, 0]:
-            TRAJECTORIES = 1
+            TRAJECTORIES = 128
         else:
-            TRAJECTORIES = 1
+            TRAJECTORIES = 32
         print("Bayesian optimization for master features " + str(jargs))
         myBopt = BayesianOptimization(
             f=f, domain=dom, acquisition_type='LCB', num_cores=8)
