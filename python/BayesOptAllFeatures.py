@@ -1,10 +1,12 @@
+from __future__ import absolute_import, division, print_function, \
+                        unicode_literals
 from GPyOpt.methods import BayesianOptimization
 import numpy as np
 import subprocess
 import pickle
 import os
 
-print "Starting..."
+print("Starting...")
 
 TRAJECTORIES = 100
 PAIRS_0 = 250
@@ -12,6 +14,10 @@ ALTS_0 = 10
 E_P = 10/7
 E_A = 1/7
 
+CPLEX_PATH = os.environ.get(
+    'CPLEX_PATH',
+    '/Users/curry/Applications/IBM/ILOG/CPLEX_Studio1271/cplex/bin/x86-64_osx')
+output_dir = os.environ.get('RUN_OUTPUT', '.')
 cacheIN = np.empty([0,5])
 cacheOUT = np.empty([0,TRAJECTORIES,14])
 
@@ -34,7 +40,7 @@ for i in range(14):
     MD.append(None)
 
 def fCacheEval(x=None):
-    print "Solving the function for the given value"
+    print("Solving the function for the given value")
     global cacheIN
     global cacheOUT
     global fi
@@ -65,7 +71,7 @@ def subCacheEval(x=None):
     global cacheIN
     global cacheOUT
     global fi
-    print "x="+str(x)
+    print("x="+str(x))
     if fi < 6 or fi == 13 or fi == 7:
         X = np.empty([len(cacheIN),5])
     else:
@@ -89,7 +95,7 @@ def subCacheEval(x=None):
     return (X, Y)
 
 def cacheEval():
-    print "Using cached values from previous calculations"
+    print("Using cached values from previous calculations")
     global fi
     global XL
     global YL
@@ -119,8 +125,8 @@ def cacheEval():
             X_i = np.append(X_i, X_k, axis=0)
             Y_i = np.append(Y_i, Y_k, axis=0)
     
-    xf = open("X"+str(fi),"wb")
-    yf = open("Y"+str(fi),"wb")
+    xf = open(output_dir + "X"+str(fi),"wb")
+    yf = open(output_dir + "Y"+str(fi),"wb")
 
     pickle.dump(X_i, xf)
     pickle.dump(Y_i, yf)
@@ -157,17 +163,21 @@ def f(Xl):
         cacheIN = np.append(cacheIN, [args], axis=0)
         Yn = np.empty([TRAJECTORIES,14])
         for i in range(TRAJECTORIES):
-            I = ["java","-jar","Simulation.jar"]
+            java_call = [
+                "java",
+                "-Djava.library.path=" + CPLEX_PATH,
+                "-Xmx8g", "-jar", "Simulation1.jar"
+            ]
             for j in args:
-                I.append(str(j))
-            I.append(str(PAIRS_0))
-            I.append(str(ALTS_0))
-            I.append(str(E_P))
-            I.append(str(E_A))
-            print "Running the simulator"
-            out = subprocess.check_output(I)
+                java_call.append(str(j))
+            java_call.append(str(PAIRS_0))
+            java_call.append(str(ALTS_0))
+            java_call.append(str(E_P))
+            java_call.append(str(E_A))
+            print("Running the simulator")
+            out = subprocess.check_output(java_call)
             out = out.split(" ")
-            print "Finished"
+            print("Finished")
             for j in range(4):
                 out[j] = float(out[j])
             for j in range(4,7):
@@ -230,7 +240,7 @@ complete_domain =[{'name': 'patientWeight', 'type': 'continuous', 'domain': (0,5
 complete_range = ["Donor Age","Donor eGFR","Donor BMI","Donor systolic BP","Is the donor African American?","Is the donor a cigarette user?","Are both donor and patient male?","Is the donor ABO compatible with the patient?","HLAB1 mismatch?","HLAB2 mismatch?","HLADR1 mismatch?","HLADR2 mismatch?","Donor to patient weight ratio","Match time"]
 if __name__ == '__main__':
     for fi in range(13,14): #feature index - between 0 and 14
-        print "Starting Bayesian Optimization for feature: "+complete_range[fi]
+        print("Starting Bayesian Optimization for feature: "+complete_range[fi])
         mixed_domain = complete_domain[1:6]
         initCache = False
 
@@ -259,15 +269,15 @@ if __name__ == '__main__':
             cacheEval()
 
         if not(np.array_equal(XL[fi],np.empty([0,5])) or np.array_equal(XL[fi],np.empty([0,6]))):
-            print "Using computed intial values from cache"
+            print("Using computed intial values from cache")
             X_0 = XL[fi]
             Y_0 = YL[fi]
         else:
-            print "No available cached values"
+            print("No available cached values")
             X_0 = None
             Y_0 = None
 
         myBopt = BayesianOptimization(f=f, domain=mixed_domain, acquisition_type='LCB', X=X_0, Y=Y_0, num_cores=8)
-        myBopt.run_optimization(max_iter=100, eps=.1, evaluations_file="E"+str(fi)+".txt", models_file="M"+str(fi)+".txt") #Continue optimization until maximized normalized standard deviation is 0.1
+        myBopt.run_optimization(max_iter=100, eps=.1, evaluations_file=output_dir+"E"+str(fi)+".txt", models_file=output_dir+"M"+str(fi)+".txt") #Continue optimization until maximized normalized standard deviation is 0.1
 
 
