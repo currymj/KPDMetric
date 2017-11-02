@@ -178,7 +178,7 @@ def f(Xl):
             java_call.append(str(E_P))
             java_call.append(str(E_A))
             print("Running the simulator")
-            out = subprocess.check_output(java_call)
+            out = subprocess.check_output(java_call).decode()
             out = out.split(" ")
             print("Finished")
             for j in range(4):
