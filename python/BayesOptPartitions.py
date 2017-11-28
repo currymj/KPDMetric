@@ -4,12 +4,13 @@ from GPyOpt.methods import BayesianOptimization
 import numpy as np
 import subprocess
 import pickle
+import random
 import os
 import time
 
 print("Starting...")
 
-TRAJECTORIES = 1
+TRAJECTORIES = 32
 PAIRS_0 = 250
 ALTS_0 = 10
 E_P = 10
@@ -168,9 +169,24 @@ complete_range = [
 
 # 
 
+def build_context(optimize_indices, x_opt=None):
+    context = {}
+    if x_opt is not None:
+        for i in optimize_indices:
+            context[complete_domain[i]['name']] = x_opt[i-1]
+    else:
+        for i in optimize_indices:
+            context[complete_domain[i]['name']] = 0.0
+    return context
+
 if __name__ == '__main__':
     tt = time.time()
     mixed_domain = complete_domain[1:6]
+    indices = list(range(1,6))
+    random.shuffle(indices)
+    splitpoint = random.randrange(1,5) 
+    optimize_first = indices[0:splitpoint]
+    optimize_second = indices[splitpoint:]
     print(mixed_domain)
     myBopt = BayesianOptimization(
         f=f     ,
@@ -184,20 +200,19 @@ if __name__ == '__main__':
         eps=.1,
         evaluations_file=output_dir + "E1.txt",
         models_file=output_dir+"M1.txt",
-        context={'BloodTypeDonor': 0, 'isCompatible': 0}
+        context=build_context(optimize_first)
     )
     best_x = myBopt.x_opt
-
+#
     myBopt.run_optimization(
         max_iter=20,
         eps=.1,
         evaluations_file=output_dir + "E2.txt",
         models_file=output_dir+"M2.txt",
-        context={'PatientCPRA': best_x[0],
-        'BloodTypePatient': best_x[1],
-        'isWifePatient': best_x[3]}
+        context=build_context(optimize_second, best_x)
     )
     elapsed = time.time() - tt
+    print(elapsed)
         
     
     # using the "context" keyword arg we can fix certain variables. this is exactly what we need!
