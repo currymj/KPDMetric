@@ -8,7 +8,7 @@ import os
 
 print("Starting...")
 
-TRAJECTORIES = 100
+TRAJECTORIES = 2
 PAIRS_0 = 250
 ALTS_0 = 10
 E_P = 10/7
@@ -17,9 +17,7 @@ E_A = 1/7
 CPLEX_PATH = os.environ.get(
     'CPLEX_PATH',
     '/Users/curry/Applications/IBM/ILOG/CPLEX_Studio1271/cplex/bin/x86-64_osx')
-output_dir = os.environ.get('RUN_OUTPUT', '.')
-cacheIN = np.empty([0, 5])
-cacheOUT = np.empty([0, TRAJECTORIES, 14])
+output_dir = os.environ.get('RUN_OUTPUT', './')
 jargs = []
 XL = []
 for i in range(6):
@@ -44,55 +42,10 @@ def l2f(a):
     for i in a:
         s += str(i)
     return s
-
-def f(Xl):
-
-    global X
-    global Y
-
-    R = np.empty([0, 1])
-    for XI in range(len(Xl)):
-        arg = Xl[XI]
-        if len(X) == 0:
-            X = np.array([arg])
-        else:
-            X = np.append(X, [arg], axis=0)
-        MT = 0
-        for i in range(TRAJECTORIES):
-            java_call = [
-                "java",
-                "-Djava.library.path=" + CPLEX_PATH,
-                "-Xmx8g", "-jar", "Simulation1.jar"
-            ]
-            for j in arg:
-                java_call.append(str(j))
-            java_call.append(str(PAIRS_0))
-            java_call.append(str(ALTS_0))
-            java_call.append(str(E_P))
-            java_call.append(str(E_A))
-            print("Running the simulator")
-            out = subprocess.check_output(java_call).decode()
-            out = out.split(" ")
-            print("Finished")
-            MT += float(out[13])
-        MT /= TRAJECTORIES
-        if len(Y) == 0:
-            Y = np.array([[MT]])
-        else:
-            Y = np.append(Y, [[MT]], axis=0)
-        ci = open(output_dir + "X" + l2f(jargs), "wb")
-        co = open(output_dir + "Y" + l2f(jargs), "wb")
-        pickle.dump(X, ci)
-        pickle.dump(Y, co)
-        ci.close()
-        co.close()
-
-        R = np.append(R, [[MT]], axis=0)
-    print("Returned")
-    return R
-
-
-
+{'BloodTypePatient': 0,
+'BloodTypeDonor': 0,
+'isWifePatient': 0,
+'isCompatible': 0}
 complete_domain = [{'name': 'patientWeight', 'type': 'continuous',
                     'domain': (0, 500)},  # 0
                    {'name': 'PatientCPRA', 'type': 'continuous',
@@ -128,6 +81,77 @@ complete_domain = [{'name': 'patientWeight', 'type': 'continuous',
                     'domain': (1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
                                15, 16, 17, 18, 103, 1403, 1404)}]  # 10
 
+# time for some classes
+# we want a class that 
+class SimulatorFunction:
+    def __init__(self, vars_to_optimize, default_vals, all_vars):
+        self.vars_to_optimize = vars_to_optimize
+        self.default_vals = default_vals
+        self.all_vars = all_vars
+    
+    def __call__(self,Xl):
+        r = np.empty([0,1])
+        for x in Xl:
+            input_dict = dict(zip(self.vars_to_optimize, x))
+            mt = 0
+            for i in range(TRAJECTORIES):
+                java_call = [
+                    "java",
+                    "-Djava.library.path=" + CPLEX_PATH,
+                    "-Xmx8g", "-jar", "Simulation1.jar"
+                ]
+                for j in self.all_vars:
+                    if j in input_dict:
+                        java_call.append(str(input_dict[j]))
+                    else:
+                        java_call.append(str(self.default_vals[j]))
+                java_call.append(str(PAIRS_0))
+                java_call.append(str(ALTS_0))
+                java_call.append(str(E_P))
+                java_call.append(str(E_A))
+                print("Running the simulator")
+                out = subprocess.check_output(java_call,timeout=100).decode()
+                out = out.split(" ")
+                print("Finished")
+                mt += float(out[13])
+            mt /= TRAJECTORIES
+
+            r = np.append(r, [[mt]], axis=0)
+        print("Returned")
+        return r
+
+def f(Xl):
+    print(Xl)
+    r = np.empty([0, 1])
+    print(len(Xl))
+    for XI in range(len(Xl)):
+        arg = Xl[XI]
+        mt = 0
+        for i in range(TRAJECTORIES):
+            java_call = [
+                "java",
+                "-Djava.library.path=" + CPLEX_PATH,
+                "-Xmx8g", "-jar", "Simulation1.jar"
+            ]
+            for j in arg:
+                java_call.append(str(j))
+            java_call.append(str(PAIRS_0))
+            java_call.append(str(ALTS_0))
+            java_call.append(str(E_P))
+            java_call.append(str(E_A))
+            print("Running the simulator")
+            out = subprocess.check_output(java_call).decode()
+            out = out.split(" ")
+            print("Finished")
+            mt += float(out[13])
+        mt /= TRAJECTORIES
+
+        r = np.append(r, [[mt]], axis=0)
+    print("Returned")
+    return r
+
+
+
 complete_range = [
     "Donor Age",
     "Donor eGFR",
@@ -144,22 +168,24 @@ complete_range = [
     "Donor to patient weight ratio",
     "Match time"]
 
+# 
 if __name__ == '__main__':
-    global X
-    global Y
-    X = np.array([])
-    Y = np.array([])
-
     mixed_domain = complete_domain[1:6]
+    print(mixed_domain)
     myBopt = BayesianOptimization(
-        f=f,
-        domain=mixed_domain,
+        f=f     ,
+           domain=mixed_domain,
         acquisition_type='LCB',
-        num_cores=8)
+        num_cores=4)
     # Continue optimization until maximized normalized standard deviation
     # is 0.1
     myBopt.run_optimization(
-        max_iter=100,
+        max_iter=1,
         eps=.1,
         evaluations_file=output_dir + "E1.txt",
-        models_file=output_dir+"M1.txt")
+        models_file=output_dir+"M1.txt"
+    )
+        
+    
+    # using the "context" keyword arg we can fix certain variables. this is exactly what we need!
+    # myBopt.x_op gives the current optimal location, after we've run a few iterations.
