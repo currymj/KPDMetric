@@ -5,14 +5,15 @@ import numpy as np
 import subprocess
 import pickle
 import os
+import time
 
 print("Starting...")
 
-TRAJECTORIES = 2
+TRAJECTORIES = 1
 PAIRS_0 = 250
 ALTS_0 = 10
-E_P = 10/7
-E_A = 1/7
+E_P = 10
+E_A = 1
 
 CPLEX_PATH = os.environ.get(
     'CPLEX_PATH',
@@ -42,10 +43,7 @@ def l2f(a):
     for i in a:
         s += str(i)
     return s
-{'BloodTypePatient': 0,
-'BloodTypeDonor': 0,
-'isWifePatient': 0,
-'isCompatible': 0}
+
 complete_domain = [{'name': 'patientWeight', 'type': 'continuous',
                     'domain': (0, 500)},  # 0
                    {'name': 'PatientCPRA', 'type': 'continuous',
@@ -169,7 +167,9 @@ complete_range = [
     "Match time"]
 
 # 
+
 if __name__ == '__main__':
+    tt = time.time()
     mixed_domain = complete_domain[1:6]
     print(mixed_domain)
     myBopt = BayesianOptimization(
@@ -180,11 +180,24 @@ if __name__ == '__main__':
     # Continue optimization until maximized normalized standard deviation
     # is 0.1
     myBopt.run_optimization(
-        max_iter=1,
+        max_iter=20,
         eps=.1,
         evaluations_file=output_dir + "E1.txt",
-        models_file=output_dir+"M1.txt"
+        models_file=output_dir+"M1.txt",
+        context={'BloodTypeDonor': 0, 'isCompatible': 0}
     )
+    best_x = myBopt.x_opt
+
+    myBopt.run_optimization(
+        max_iter=20,
+        eps=.1,
+        evaluations_file=output_dir + "E2.txt",
+        models_file=output_dir+"M2.txt",
+        context={'PatientCPRA': best_x[0],
+        'BloodTypePatient': best_x[1],
+        'isWifePatient': best_x[3]}
+    )
+    elapsed = time.time() - tt
         
     
     # using the "context" keyword arg we can fix certain variables. this is exactly what we need!
